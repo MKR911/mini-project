@@ -2,7 +2,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useGLTF, Stars, Environment } from "@react-three/drei";
-import * as THREE from "three";
+// import * as THREE from "three";
 
 interface KeysMap {
   [key: string]: boolean;
@@ -102,27 +102,27 @@ function CameraController() {
   // Handle keyboard movements
   useFrame((state, delta) => {
     const speed = 10 * delta;
-    const moveVector = new THREE.Vector3();
+    // const moveVector = new THREE.Vector3();
 
     // Forward/backward
-    if (keys.current["W"]) {
-      moveVector.z -= speed;
+    if (keys.current["KeyW"]) {
+      camera.translateZ(-speed);
     }
-    if (keys.current["S"]) {
-      moveVector.z += speed;
+    if (keys.current["KeyS"]) {
+      camera.translateZ(speed);
     }
 
     // Left/right
     if (keys.current["KeyA"]) {
-      moveVector.x -= speed;
+      camera.translateX(-speed);
     }
     if (keys.current["KeyD"]) {
-      moveVector.x += speed;
+      camera.translateX(speed);
     }
 
     // Up/down
     if (keys.current["Space"]) {
-      moveVector.y += speed;
+      camera.translateY(speed);
     }
     if (keys.current["ShiftLeft"]) {
       camera.translateY(-speed);
