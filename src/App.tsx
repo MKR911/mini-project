@@ -12,25 +12,24 @@ interface CityBlock {
   key: string;
   position: [number, number, number]; // [x, y, z]
   modelPath: string;
+  scale: [number, number, number];
 }
 
 // City Block Component
 function CityBlock({
   position,
   modelPath = "/mini-city.glb",
+  scale = [1, 1, 1], // Accepts a scale prop with a default
 }: {
   position: [number, number, number];
   modelPath?: string;
+  scale?: [number, number, number]; // Type annotation for scale
 }) {
   const { scene } = useGLTF(modelPath);
-
-  // Clone the model to avoid sharing materials
-  const clonedScene = React.useMemo(() => {
-    return scene.clone();
-  }, [scene]);
+  const clonedScene = React.useMemo(() => scene.clone(), [scene]);
 
   return (
-    <primitive object={clonedScene} position={position} scale={[1, 1, 1]} />
+    <primitive object={clonedScene} position={position} scale={scale} />
   );
 }
 
@@ -207,6 +206,7 @@ function CameraController() {
 
     // Right vector is perpendicular to forward and up
     const right = new THREE.Vector3()
+    //TODO:to make an initial commit 
       .crossVectors(forward, new THREE.Vector3(0, 1, 0))
       .normalize();
 
@@ -257,55 +257,43 @@ function CameraController() {
 function InfiniteCity({ renderDistance = 9 }) {
   const { camera } = useThree();
   const [cityBlocks, setCityBlocks] = useState<CityBlock[]>([]);
-  const blockSize = 50; // Size of one city block
-  const previousBlocksRef = useRef<CityBlock[]>([]);
+  const blockSize = 50;
+  const previousBlockKeysRef = useRef<Set<string>>(new Set()); // Keep track of rendered block keys
 
-  // Preload models to avoid rendering delays
   useEffect(() => {
-    // Preload the city model
     useGLTF.preload("/mini-city.glb");
   }, []);
 
-  // Update city blocks based on camera position with optimization
   useFrame(() => {
     const cameraX = Math.round(camera.position.x / blockSize);
     const cameraZ = Math.round(camera.position.z / blockSize);
+    const currentBlockKeys = new Set<string>();
+    const newBlocks: CityBlock[] = [];
 
-    // Check if we need to update blocks (only update when camera moves to new block)
-    const shouldUpdate =
-      previousBlocksRef.current.length === 0 ||
-      Math.abs(
-        cameraX -
-          Math.round(previousBlocksRef.current[0]?.position[0] / blockSize)
-      ) > 0 ||
-      Math.abs(
-        cameraZ -
-          Math.round(previousBlocksRef.current[0]?.position[2] / blockSize)
-      ) > 0;
+    for (let x = -renderDistance; x <= renderDistance; x++) {
+      for (let z = -renderDistance; z <= renderDistance; z++) {
+        const blockX = (cameraX + x) * blockSize;
+        const blockZ = (cameraZ + z) * blockSize;
+        const key = `${blockX}-${blockZ}`;
+        currentBlockKeys.add(key);
 
-    if (shouldUpdate) {
-      const newBlocks: CityBlock[] = [];
+        // Check if this block already exists with a generated scale
+        const existingBlock = cityBlocks.find((b) => b.key === key);
 
-      // Generate city blocks in a grid around the camera with increased render distance
-      for (let x = -renderDistance; x <= renderDistance; x++) {
-        for (let z = -renderDistance; z <= renderDistance; z++) {
-          const blockX = (cameraX + x) * blockSize;
-          const blockZ = (cameraZ + z) * blockSize;
-
+        if (existingBlock) {
+          newBlocks.push(existingBlock); // Use the existing block with its stable scale
+        } else {
+          // Generate a new block with a random height scale
+          const randomHeightScale = 0.5 + Math.random() * 2.0;
+          const scale: [number, number, number] = [1, randomHeightScale, 1];
           const modelPath = `/mini-city.glb`;
-
-          newBlocks.push({
-            key: `${blockX}-${blockZ}`,
-            position: [blockX, 0, blockZ],
-            modelPath,
-          });
+          newBlocks.push({ key, position: [blockX, 0, blockZ], modelPath, scale });
         }
       }
-
-      // Update blocks and store reference
-      setCityBlocks(newBlocks);
-      previousBlocksRef.current = newBlocks;
     }
+
+    // Update the state with the new set of blocks
+    setCityBlocks(newBlocks);
   });
 
   return (
@@ -315,6 +303,7 @@ function InfiniteCity({ renderDistance = 9 }) {
           key={block.key}
           position={block.position}
           modelPath={block.modelPath}
+          scale={block.scale}
         />
       ))}
     </>
